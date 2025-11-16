@@ -181,6 +181,7 @@ struct client_ctx {
 #define CLIENT_ACTIVE			0x2000
 #define CLIENT_SKIP_PAGER		0x4000
 #define CLIENT_SKIP_TASKBAR		0x8000
+#define CLIENT_DOCK			0x10000
 
 #define CLIENT_SKIP_CYCLE		(CLIENT_HIDDEN | CLIENT_IGNORE | \
 					 CLIENT_SKIP_TASKBAR | CLIENT_SKIP_PAGER)
@@ -232,6 +233,13 @@ struct screen_ctx {
 	struct geom		 view; /* viewable area */
 	struct geom		 work; /* workable area, gap-applied */
 	struct gap		 gap;
+	struct {
+		int		 left, right, top, bottom;
+		int		 left_start_y, left_end_y;
+		int		 right_start_y, right_end_y;
+		int		 top_start_x, top_end_x;
+		int		 bottom_start_x, bottom_end_x;
+	} strut;
 	struct client_q		 clientq;
 	struct region_q		 regionq;
 	struct group_q		 groupq;
@@ -406,6 +414,23 @@ enum ewmh {
 	_NET_WM_STATE_SKIP_PAGER,
 	_NET_WM_STATE_SKIP_TASKBAR,
 	_CWM_WM_STATE_FREEZE,
+	_NET_WM_WINDOW_TYPE,
+	_NET_WM_WINDOW_TYPE_DESKTOP,
+	_NET_WM_WINDOW_TYPE_DOCK,
+	_NET_WM_WINDOW_TYPE_TOOLBAR,
+	_NET_WM_WINDOW_TYPE_MENU,
+	_NET_WM_WINDOW_TYPE_UTILITY,
+	_NET_WM_WINDOW_TYPE_SPLASH,
+	_NET_WM_WINDOW_TYPE_DIALOG,
+	_NET_WM_WINDOW_TYPE_DROPDOWN_MENU,
+	_NET_WM_WINDOW_TYPE_POPUP_MENU,
+	_NET_WM_WINDOW_TYPE_TOOLTIP,
+	_NET_WM_WINDOW_TYPE_NOTIFICATION,
+	_NET_WM_WINDOW_TYPE_COMBO,
+	_NET_WM_WINDOW_TYPE_DND,
+	_NET_WM_WINDOW_TYPE_NORMAL,
+	_NET_WM_STRUT,
+	_NET_WM_STRUT_PARTIAL,
 	EWMH_NITEMS
 };
 enum net_wm_state {
@@ -616,6 +641,9 @@ void 			 xu_ewmh_handle_net_wm_state_msg(struct client_ctx *,
 			     int, Atom, Atom);
 void 			 xu_ewmh_set_net_wm_state(struct client_ctx *);
 void 			 xu_ewmh_restore_net_wm_state(struct client_ctx *);
+Atom			*xu_ewmh_get_net_wm_window_type(struct client_ctx *, int *);
+int			 xu_ewmh_get_net_wm_strut_partial(Window, long *);
+int			 xu_ewmh_get_net_wm_strut(Window, long *);
 
 char			*u_argv(char * const *);
 void			 u_exec(char *);

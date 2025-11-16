@@ -183,6 +183,23 @@ xu_atom_init(void)
 		"_NET_WM_STATE_SKIP_PAGER",
 		"_NET_WM_STATE_SKIP_TASKBAR",
 		"_CWM_WM_STATE_FREEZE",
+		"_NET_WM_WINDOW_TYPE",
+		"_NET_WM_WINDOW_TYPE_DESKTOP",
+		"_NET_WM_WINDOW_TYPE_DOCK",
+		"_NET_WM_WINDOW_TYPE_TOOLBAR",
+		"_NET_WM_WINDOW_TYPE_MENU",
+		"_NET_WM_WINDOW_TYPE_UTILITY",
+		"_NET_WM_WINDOW_TYPE_SPLASH",
+		"_NET_WM_WINDOW_TYPE_DIALOG",
+		"_NET_WM_WINDOW_TYPE_DROPDOWN_MENU",
+		"_NET_WM_WINDOW_TYPE_POPUP_MENU",
+		"_NET_WM_WINDOW_TYPE_TOOLTIP",
+		"_NET_WM_WINDOW_TYPE_NOTIFICATION",
+		"_NET_WM_WINDOW_TYPE_COMBO",
+		"_NET_WM_WINDOW_TYPE_DND",
+		"_NET_WM_WINDOW_TYPE_NORMAL",
+		"_NET_WM_STRUT",
+		"_NET_WM_STRUT_PARTIAL",
 	};
 
 	XInternAtoms(X_Dpy, cwmhints, nitems(cwmhints), False, cwmh);
@@ -565,4 +582,64 @@ xu_ewmh_set_net_wm_state(struct client_ctx *cc)
 	else
 		XDeleteProperty(X_Dpy, cc->win, ewmh[_NET_WM_STATE]);
 	free(atoms);
+}
+
+Atom *
+xu_ewmh_get_net_wm_window_type(struct client_ctx *cc, int *n)
+{
+	Atom	*type, *p = NULL;
+
+	if ((*n = xu_get_prop(cc->win, ewmh[_NET_WM_WINDOW_TYPE], XA_ATOM,
+	    64L, (unsigned char **)&p)) <= 0)
+		return NULL;
+
+	type = xreallocarray(NULL, *n, sizeof(Atom));
+	(void)memcpy(type, p, *n * sizeof(Atom));
+	XFree((char *)p);
+
+	return type;
+}
+
+int
+xu_ewmh_get_net_wm_strut_partial(Window win, long *strut)
+{
+	long	*p;
+	int	 n;
+
+	if ((n = xu_get_prop(win, ewmh[_NET_WM_STRUT_PARTIAL], XA_CARDINAL,
+	    12L, (unsigned char **)&p)) != 12)
+		return 0;
+
+	(void)memcpy(strut, p, 12 * sizeof(long));
+	XFree(p);
+
+	return 1;
+}
+
+int
+xu_ewmh_get_net_wm_strut(Window win, long *strut)
+{
+	long	*p;
+	int	 n;
+
+	if ((n = xu_get_prop(win, ewmh[_NET_WM_STRUT], XA_CARDINAL,
+	    4L, (unsigned char **)&p)) != 4)
+		return 0;
+
+	/* Convert 4-value strut to 12-value partial strut */
+	strut[0] = p[0];  /* left */
+	strut[1] = p[1];  /* right */
+	strut[2] = p[2];  /* top */
+	strut[3] = p[3];  /* bottom */
+	strut[4] = 0;     /* left_start_y */
+	strut[5] = 0;     /* left_end_y */
+	strut[6] = 0;     /* right_start_y */
+	strut[7] = 0;     /* right_end_y */
+	strut[8] = 0;     /* top_start_x */
+	strut[9] = 0;     /* top_end_x */
+	strut[10] = 0;    /* bottom_start_x */
+	strut[11] = 0;    /* bottom_end_x */
+	XFree(p);
+
+	return 1;
 }

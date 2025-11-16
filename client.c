@@ -93,6 +93,26 @@ client_init(Window win, struct screen_ctx *sc)
 	client_transient(cc);
 	client_mwm_hints(cc);
 
+	/* Check window type to determine if we should manage this window */
+	{
+		Atom	*type;
+		int	 i, ntypes;
+
+		type = xu_ewmh_get_net_wm_window_type(cc, &ntypes);
+		if (type != NULL) {
+			for (i = 0; i < ntypes; i++) {
+				if (type[i] == ewmh[_NET_WM_WINDOW_TYPE_DOCK]) {
+					cc->flags |= CLIENT_IGNORE | CLIENT_DOCK;
+					break;
+				} else if (type[i] == ewmh[_NET_WM_WINDOW_TYPE_DESKTOP]) {
+					cc->flags |= CLIENT_IGNORE;
+					break;
+				}
+			}
+			free(type);
+		}
+	}
+
 	if ((cc->flags & CLIENT_IGNORE))
 		cc->bwidth = 0;
 	cc->dim.w = (cc->geom.w - cc->hint.basew) / cc->hint.incw;
@@ -126,6 +146,10 @@ client_init(Window win, struct screen_ctx *sc)
 		client_hide(cc);
 	else
 		client_show(cc);
+
+	/* Keep DOCK windows on top */
+	if (cc->flags & CLIENT_DOCK)
+		XRaiseWindow(X_Dpy, cc->win);
 
 	if (mapped) {
 		if (cc->gc) {
@@ -479,7 +503,15 @@ client_lower(struct client_ctx *cc)
 void
 client_raise(struct client_ctx *cc)
 {
+	struct client_ctx *cc2;
+
 	XRaiseWindow(X_Dpy, cc->win);
+
+	/* Ensure dock windows always stay on top */
+	TAILQ_FOREACH(cc2, &cc->sc->clientq, entry) {
+		if (cc2->flags & CLIENT_DOCK)
+			XRaiseWindow(X_Dpy, cc2->win);
+	}
 }
 
 void

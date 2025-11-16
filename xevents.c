@@ -216,6 +216,12 @@ xev_handle_propertynotify(XEvent *ee)
 			if ((sc = screen_find(e->window)) != NULL)
 				xu_ewmh_net_desktop_names(sc);
 		}
+		/* Handle strut changes on any window */
+		if (e->atom == ewmh[_NET_WM_STRUT] ||
+		    e->atom == ewmh[_NET_WM_STRUT_PARTIAL]) {
+			TAILQ_FOREACH(sc, &Screenq, entry)
+				screen_update_geometry(sc);
+		}
 	}
 }
 
@@ -260,6 +266,9 @@ xev_handle_buttonpress(XEvent *ee)
 	case CWM_CONTEXT_CC:
 		if (((cc = client_find(e->window)) == NULL) &&
 		    ((cc = client_current(sc)) == NULL))
+			return;
+		/* Ignore dock windows */
+		if (cc->flags & CLIENT_DOCK)
 			return;
 		(*mb->callback)(cc, mb->cargs);
 		break;
@@ -329,6 +338,9 @@ xev_handle_keypress(XEvent *ee)
 	case CWM_CONTEXT_CC:
 		if (((cc = client_find(e->subwindow)) == NULL) &&
 		    ((cc = client_current(sc)) == NULL))
+			return;
+		/* Ignore dock windows */
+		if (cc->flags & CLIENT_DOCK)
 			return;
 		(*kb->callback)(cc, kb->cargs);
 		break;

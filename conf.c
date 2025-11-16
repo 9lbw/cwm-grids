@@ -320,7 +320,7 @@ conf_init(struct conf *c)
 	conf_wm_add(c, "cwm", "cwm");
 
 	c->font = xstrdup("sans-serif:pixelsize=14:bold");
-	c->wmname = xstrdup("CWM");
+	c->wmname = xstrdup("cwm-grids");
 
 	home = getenv("HOME");
 	if ((home == NULL) || (*home == '\0')) {

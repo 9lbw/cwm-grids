@@ -176,12 +176,56 @@ void
 screen_update_geometry(struct screen_ctx *sc)
 {
 	struct region_ctx	*rc;
+	Window			*wins, w0, w1;
+	unsigned int		 nwins, i;
+	long			 strut[12];
 
 	sc->view.x = 0;
 	sc->view.y = 0;
 	sc->view.w = DisplayWidth(X_Dpy, sc->which);
 	sc->view.h = DisplayHeight(X_Dpy, sc->which);
-	sc->work = screen_apply_gap(sc, sc->view);
+
+	/* Calculate struts from all windows */
+	(void)memset(&sc->strut, 0, sizeof(sc->strut));
+	if (XQueryTree(X_Dpy, sc->rootwin, &w0, &w1, &wins, &nwins)) {
+		for (i = 0; i < nwins; i++) {
+			/* Try _NET_WM_STRUT_PARTIAL first, then _NET_WM_STRUT */
+			if (xu_ewmh_get_net_wm_strut_partial(wins[i], strut) ||
+			    xu_ewmh_get_net_wm_strut(wins[i], strut)) {
+				/* Accumulate struts (multiple docks may exist) */
+				if (strut[0] > sc->strut.left) {
+					sc->strut.left = strut[0];
+					sc->strut.left_start_y = strut[4];
+					sc->strut.left_end_y = strut[5];
+				}
+				if (strut[1] > sc->strut.right) {
+					sc->strut.right = strut[1];
+					sc->strut.right_start_y = strut[6];
+					sc->strut.right_end_y = strut[7];
+				}
+				if (strut[2] > sc->strut.top) {
+					sc->strut.top = strut[2];
+					sc->strut.top_start_x = strut[8];
+					sc->strut.top_end_x = strut[9];
+				}
+				if (strut[3] > sc->strut.bottom) {
+					sc->strut.bottom = strut[3];
+					sc->strut.bottom_start_x = strut[10];
+					sc->strut.bottom_end_x = strut[11];
+				}
+			}
+		}
+		XFree(wins);
+	}
+
+	/* Apply struts to workarea */
+	sc->work.x = sc->view.x + sc->strut.left;
+	sc->work.y = sc->view.y + sc->strut.top;
+	sc->work.w = sc->view.w - (sc->strut.left + sc->strut.right);
+	sc->work.h = sc->view.h - (sc->strut.top + sc->strut.bottom);
+
+	/* Also apply gaps */
+	sc->work = screen_apply_gap(sc, sc->work);
 
 	while ((rc = TAILQ_FIRST(&sc->regionq)) != NULL) {
 		TAILQ_REMOVE(&sc->regionq, rc, entry);
@@ -203,14 +247,19 @@ screen_update_geometry(struct screen_ctx *sc)
 				continue;
 			}
 
-			rc = xmalloc(sizeof(*rc));
-			rc->num = i;
-			rc->view.x = ci->x;
-			rc->view.y = ci->y;
-			rc->view.w = ci->width;
-			rc->view.h = ci->height;
-			rc->work = screen_apply_gap(sc, rc->view);
-			TAILQ_INSERT_TAIL(&sc->regionq, rc, entry);
+		rc = xmalloc(sizeof(*rc));
+		rc->num = i;
+		rc->view.x = ci->x;
+		rc->view.y = ci->y;
+		rc->view.w = ci->width;
+		rc->view.h = ci->height;
+		/* Apply struts then gaps to region */
+		rc->work.x = rc->view.x + sc->strut.left;
+		rc->work.y = rc->view.y + sc->strut.top;
+		rc->work.w = rc->view.w - (sc->strut.left + sc->strut.right);
+		rc->work.h = rc->view.h - (sc->strut.top + sc->strut.bottom);
+		rc->work = screen_apply_gap(sc, rc->work);
+		TAILQ_INSERT_TAIL(&sc->regionq, rc, entry);
 
 			XRRFreeCrtcInfo(ci);
 		}
@@ -222,7 +271,12 @@ screen_update_geometry(struct screen_ctx *sc)
 		rc->view.y = 0;
 		rc->view.w = DisplayWidth(X_Dpy, sc->which);
 		rc->view.h = DisplayHeight(X_Dpy, sc->which);
-		rc->work = screen_apply_gap(sc, rc->view);
+		/* Apply struts then gaps to region */
+		rc->work.x = rc->view.x + sc->strut.left;
+		rc->work.y = rc->view.y + sc->strut.top;
+		rc->work.w = rc->view.w - (sc->strut.left + sc->strut.right);
+		rc->work.h = rc->view.h - (sc->strut.top + sc->strut.bottom);
+		rc->work = screen_apply_gap(sc, rc->work);
 		TAILQ_INSERT_TAIL(&sc->regionq, rc, entry);
 	}
 
