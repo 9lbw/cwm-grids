@@ -80,6 +80,12 @@ group_show(struct group_ctx *gc)
 	}
 	group_restack(gc);
 	group_set_active(gc);
+
+	/* Ensure dock windows stay on top after workspace switch */
+	TAILQ_FOREACH(cc, &sc->clientq, entry) {
+		if (cc->flags & CLIENT_DOCK)
+			XRaiseWindow(X_Dpy, cc->win);
+	}
 }
 
 static void
