@@ -244,6 +244,7 @@ kbfunc_client_resize_kb(void *ctx, struct cargs *cargs)
 		cc->geom.h = cc->hint.minh;
 
 	if (Conf.gridsnap) {
+		client_apply_sizehints(cc);
 		cc->geom.w = grid_snap(cc->geom.w);
 		cc->geom.h = grid_snap(cc->geom.h);
 		if (cc->geom.w < cc->hint.minw)
@@ -295,15 +296,15 @@ kbfunc_client_resize_mb(void *ctx, struct cargs *cargs)
 				continue;
 			ltime = ev.xmotion.time;
 
-			cc->geom.w = ev.xmotion.x - cc->geom.x - cc->bwidth;
-			cc->geom.h = ev.xmotion.y - cc->geom.y - cc->bwidth;
+		cc->geom.w = ev.xmotion.x - cc->geom.x - cc->bwidth;
+		cc->geom.h = ev.xmotion.y - cc->geom.y - cc->bwidth;
 
-			if (Conf.gridsnap) {
-				cc->geom.w = grid_snap(cc->geom.w);
-				cc->geom.h = grid_snap(cc->geom.h);
-			}
+		client_apply_sizehints(cc);
 
-			client_apply_sizehints(cc);
+		if (Conf.gridsnap) {
+			cc->geom.w = grid_snap(cc->geom.w);
+			cc->geom.h = grid_snap(cc->geom.h);
+		}
 			client_resize(cc, 1);
 			screen_prop_win_draw(sc,
 			    "%4d x %-4d", cc->dim.w, cc->dim.h);
