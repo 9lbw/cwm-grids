@@ -116,11 +116,13 @@ kbfunc_client_move_kb(void *ctx, struct cargs *cargs)
 	struct screen_ctx	*sc = cc->sc;
 	struct geom		 area;
 	int			 mx = 0, my = 0;
+	int			 amt;
 
 	if (cc->flags & CLIENT_FREEZE)
 		return;
 
-	kbfunc_amount(cargs->flag, Conf.mamount, &mx, &my);
+	amt = Conf.gridsnap ? Conf.gridsize : Conf.mamount;
+	kbfunc_amount(cargs->flag, amt, &mx, &my);
 
 	cc->geom.x += mx;
 	if (cc->geom.x < -(cc->geom.w + cc->bwidth - 1))
@@ -133,15 +135,20 @@ kbfunc_client_move_kb(void *ctx, struct cargs *cargs)
 	if (cc->geom.y > (sc->view.h - cc->bwidth - 1))
 		cc->geom.y = sc->view.h - cc->bwidth - 1;
 
-	area = screen_area(sc,
-	    cc->geom.x + cc->geom.w / 2,
-	    cc->geom.y + cc->geom.h / 2, 1);
-	cc->geom.x += client_snapcalc(cc->geom.x,
-	    cc->geom.x + cc->geom.w + (cc->bwidth * 2),
-	    area.x, area.x + area.w, sc->snapdist);
-	cc->geom.y += client_snapcalc(cc->geom.y,
-	    cc->geom.y + cc->geom.h + (cc->bwidth * 2),
-	    area.y, area.y + area.h, sc->snapdist);
+	if (Conf.gridsnap) {
+		cc->geom.x = grid_snap(cc->geom.x);
+		cc->geom.y = grid_snap(cc->geom.y);
+	} else {
+		area = screen_area(sc,
+		    cc->geom.x + cc->geom.w / 2,
+		    cc->geom.y + cc->geom.h / 2, 1);
+		cc->geom.x += client_snapcalc(cc->geom.x,
+		    cc->geom.x + cc->geom.w + (cc->bwidth * 2),
+		    area.x, area.x + area.w, sc->snapdist);
+		cc->geom.y += client_snapcalc(cc->geom.y,
+		    cc->geom.y + cc->geom.h + (cc->bwidth * 2),
+		    area.y, area.y + area.h, sc->snapdist);
+	}
 
 	client_move(cc);
 	client_ptr_inbound(cc, 1);
@@ -184,15 +191,20 @@ kbfunc_client_move_mb(void *ctx, struct cargs *cargs)
 			cc->geom.x = ev.xmotion.x_root - cc->ptr.x - cc->bwidth;
 			cc->geom.y = ev.xmotion.y_root - cc->ptr.y - cc->bwidth;
 
-			area = screen_area(sc,
-			    cc->geom.x + cc->geom.w / 2,
-			    cc->geom.y + cc->geom.h / 2, 1);
-			cc->geom.x += client_snapcalc(cc->geom.x,
-			    cc->geom.x + cc->geom.w + (cc->bwidth * 2),
-			    area.x, area.x + area.w, sc->snapdist);
-			cc->geom.y += client_snapcalc(cc->geom.y,
-			    cc->geom.y + cc->geom.h + (cc->bwidth * 2),
-			    area.y, area.y + area.h, sc->snapdist);
+			if (Conf.gridsnap) {
+				cc->geom.x = grid_snap(cc->geom.x);
+				cc->geom.y = grid_snap(cc->geom.y);
+			} else {
+				area = screen_area(sc,
+				    cc->geom.x + cc->geom.w / 2,
+				    cc->geom.y + cc->geom.h / 2, 1);
+				cc->geom.x += client_snapcalc(cc->geom.x,
+				    cc->geom.x + cc->geom.w + (cc->bwidth * 2),
+				    area.x, area.x + area.w, sc->snapdist);
+				cc->geom.y += client_snapcalc(cc->geom.y,
+				    cc->geom.y + cc->geom.h + (cc->bwidth * 2),
+				    area.y, area.y + area.h, sc->snapdist);
+			}
 			client_move(cc);
 			screen_prop_win_draw(sc,
 			    "%+5d%+5d", cc->geom.x, cc->geom.y);
@@ -218,8 +230,11 @@ kbfunc_client_resize_kb(void *ctx, struct cargs *cargs)
 	if (cc->flags & CLIENT_FREEZE)
 		return;
 
-	if (!(cc->hint.flags & PResizeInc))
+	if (Conf.gridsnap) {
+		amt = Conf.gridsize;
+	} else if (!(cc->hint.flags & PResizeInc)) {
 		amt = Conf.mamount;
+	}
 
 	kbfunc_amount(cargs->flag, amt, &mx, &my);
 
@@ -227,6 +242,16 @@ kbfunc_client_resize_kb(void *ctx, struct cargs *cargs)
 		cc->geom.w = cc->hint.minw;
 	if ((cc->geom.h += my * cc->hint.inch) < cc->hint.minh)
 		cc->geom.h = cc->hint.minh;
+
+	if (Conf.gridsnap) {
+		cc->geom.w = grid_snap(cc->geom.w);
+		cc->geom.h = grid_snap(cc->geom.h);
+		if (cc->geom.w < cc->hint.minw)
+			cc->geom.w = cc->hint.minw;
+		if (cc->geom.h < cc->hint.minh)
+			cc->geom.h = cc->hint.minh;
+	}
+
 	if (cc->geom.x + cc->geom.w + cc->bwidth - 1 < 0)
 		cc->geom.x = -(cc->geom.w + cc->bwidth - 1);
 	if (cc->geom.y + cc->geom.h + cc->bwidth - 1 < 0)
@@ -272,6 +297,12 @@ kbfunc_client_resize_mb(void *ctx, struct cargs *cargs)
 
 			cc->geom.w = ev.xmotion.x - cc->geom.x - cc->bwidth;
 			cc->geom.h = ev.xmotion.y - cc->geom.y - cc->bwidth;
+
+			if (Conf.gridsnap) {
+				cc->geom.w = grid_snap(cc->geom.w);
+				cc->geom.h = grid_snap(cc->geom.h);
+			}
+
 			client_apply_sizehints(cc);
 			client_resize(cc, 1);
 			screen_prop_win_draw(sc,
@@ -818,4 +849,18 @@ kbfunc_exec_lock(void *ctx, struct cargs *cargs)
 		if (strcmp(cmd->name, "lock") == 0)
 			u_spawn(cmd->path);
 	}
+}
+
+void
+kbfunc_grid_step_up(void *ctx, struct cargs *cargs)
+{
+	if (Conf.gridsize < INT_MAX - 8)
+		Conf.gridsize += 8;
+}
+
+void
+kbfunc_grid_step_down(void *ctx, struct cargs *cargs)
+{
+	if (Conf.gridsize > 8)
+		Conf.gridsize -= 8;
 }

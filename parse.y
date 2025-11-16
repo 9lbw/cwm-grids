@@ -74,7 +74,7 @@ typedef struct {
 %token	FONTNAME STICKY GAP
 %token	AUTOGROUP COMMAND IGNORE WM
 %token	YES NO BORDERWIDTH MOVEAMOUNT HTILE VTILE
-%token	COLOR SNAPDIST
+%token	COLOR SNAPDIST GRIDSIZE GRIDSNAP
 %token	ACTIVEBORDER INACTIVEBORDER URGENCYBORDER
 %token	GROUPBORDER UNGROUPBORDER
 %token	MENUBG MENUFG
@@ -162,6 +162,16 @@ main		: FONTNAME STRING		{
 				YYERROR;
 			}
 			conf->snapdist = $2;
+		}
+		| GRIDSIZE NUMBER {
+			if ($2 < 1 || $2 > INT_MAX) {
+				yyerror("invalid gridsize");
+				YYERROR;
+			}
+			conf->gridsize = $2;
+		}
+		| GRIDSNAP yesno {
+			conf->gridsnap = $2;
 		}
 		| COMMAND STRING string		{
 			if (strlen($3) >= PATH_MAX) {
@@ -342,6 +352,8 @@ lookup(char *s)
 		{ "font",		FONTCOLOR},
 		{ "fontname",		FONTNAME},
 		{ "gap",		GAP},
+		{ "gridsize",		GRIDSIZE},
+		{ "gridsnap",		GRIDSNAP},
 		{ "groupborder",	GROUPBORDER},
 		{ "htile",		HTILE},
 		{ "ignore",		IGNORE},

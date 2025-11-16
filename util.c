@@ -138,3 +138,14 @@ log_debug(int level, const char *func, const char *msg, ...)
 	free(fmt);
 	va_end(ap);
 }
+
+int
+grid_snap(int val)
+{
+	int	gridsize = Conf.gridsize;
+
+	if (!Conf.gridsnap || gridsize <= 0)
+		return val;
+
+	return ((val + gridsize / 2) / gridsize) * gridsize;
+}

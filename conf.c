@@ -194,6 +194,9 @@ static const struct {
 	{ FUNC_SC(lock, exec_lock, 0) },
 	{ FUNC_SC(restart, cwm_status, CWM_EXEC_WM) },
 	{ FUNC_SC(quit, cwm_status, CWM_QUIT) },
+
+	{ FUNC_SC(grid-step-up, grid_step_up, 0) },
+	{ FUNC_SC(grid-step-down, grid_step_down, 0) },
 };
 static unsigned int ignore_mods[] = {
 	0, LockMask, Mod2Mask, Mod2Mask | LockMask
@@ -291,6 +294,8 @@ conf_init(struct conf *c)
 	c->htile = 50;
 	c->vtile = 50;
 	c->snapdist = 0;
+	c->gridsize = 32;
+	c->gridsnap = 0;
 	c->ngroups = 0;
 	c->nameqlen = 5;
 

@@ -735,6 +735,11 @@ client_placement(struct client_ctx *cc)
 			cc->geom.y = area.y;
 			cc->geom.h = area.y + area.h;
 		}
+
+		if (Conf.gridsnap) {
+			cc->geom.x = grid_snap(cc->geom.x);
+			cc->geom.y = grid_snap(cc->geom.y);
+		}
 	}
 }
 

@@ -1,7 +1,7 @@
 # cwm makefile for BSD make and GNU make
 # uses pkg-config, DESTDIR and PREFIX
 
-PROG=		cwm
+PROG=		cwm-grids
 
 PREFIX?=	/usr/local
 
@@ -37,7 +37,7 @@ ${PROG}: ${OBJS}
 
 install: ${PROG}
 	install -d ${DESTDIR}${PREFIX}/bin ${DESTDIR}${MANPREFIX}/man1 ${DESTDIR}${MANPREFIX}/man5
-	install -m 755 cwm ${DESTDIR}${PREFIX}/bin
+	install -m 755 cwm-grids ${DESTDIR}${PREFIX}/bin
 	install -m 644 cwm.1 ${DESTDIR}${MANPREFIX}/man1
 	install -m 644 cwmrc.5 ${DESTDIR}${MANPREFIX}/man5
 

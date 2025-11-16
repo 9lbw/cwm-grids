@@ -316,6 +316,8 @@ struct conf {
 	int			 snapdist;
 	int			 htile;
 	int			 vtile;
+	int			 gridsize;
+	int			 gridsnap;
 	struct gap		 gap;
 	char			*color[CWM_COLOR_NITEMS];
 	char			*font;
@@ -549,6 +551,8 @@ void			 kbfunc_client_menu_label(void *, struct cargs *);
 void			 kbfunc_exec_cmd(void *, struct cargs *);
 void			 kbfunc_exec_lock(void *, struct cargs *);
 void			 kbfunc_exec_term(void *, struct cargs *);
+void			 kbfunc_grid_step_up(void *, struct cargs *);
+void			 kbfunc_grid_step_down(void *, struct cargs *);
 
 struct menu  		*menu_filter(struct screen_ctx *, struct menu_q *,
 			     const char *, const char *, int,
@@ -617,10 +621,13 @@ char			*u_argv(char * const *);
 void			 u_exec(char *);
 void			 u_spawn(char *);
 void			 log_debug(int, const char *, const char *, ...)
-			    __attribute__((__format__ (printf, 3, 4)))
-			    __attribute__((__nonnull__ (3)));
+		    __attribute__((__format__ (printf, 3, 4)))
+		    __attribute__((__nonnull__ (3)));
+
+int			 grid_snap(int);
 
 void			*xcalloc(size_t, size_t);
+
 void			*xmalloc(size_t);
 void			*xreallocarray(void *, size_t, size_t);
 char			*xstrdup(const char *);
