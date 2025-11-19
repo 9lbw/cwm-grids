@@ -147,5 +147,8 @@ grid_snap(int val)
 	if (!Conf.gridsnap || gridsize <= 0)
 		return val;
 
-	return ((val + gridsize / 2) / gridsize) * gridsize;
+	if (val >= 0)
+		return ((val + gridsize / 2) / gridsize) * gridsize;
+	else
+		return ((val - gridsize / 2) / gridsize) * gridsize;
 }

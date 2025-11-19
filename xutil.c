@@ -358,7 +358,7 @@ xu_ewmh_net_desktop_names(struct screen_ctx *sc)
 {
 	struct group_ctx	*gc;
 	char			*p, *q;
-	unsigned char		*prop_ret;
+	unsigned char		*prop_ret = NULL;
 	int			 i = 0, j = 0, nstrings = 0, n = 0;
 	size_t			 len = 0, tlen, slen;
 
@@ -366,7 +366,6 @@ xu_ewmh_net_desktop_names(struct screen_ctx *sc)
 
 	if ((j = xu_get_prop(sc->rootwin, ewmh[_NET_DESKTOP_NAMES],
 	    cwmh[UTF8_STRING], 0xffffff, (unsigned char **)&prop_ret)) > 0) {
-		prop_ret[j - 1] = '\0'; /* paranoia */
 		while (i < j) {
 			if (prop_ret[i++] == '\0')
 				nstrings++;
@@ -379,10 +378,10 @@ xu_ewmh_net_desktop_names(struct screen_ctx *sc)
 			if (gc->num == n) {
 				free(gc->name);
 				gc->name = xstrdup(p);
-				p += strlen(p) + 1;
 				break;
 			}
 		}
+		p += strlen(p) + 1;
 		n++;
 	}
 	if (prop_ret != NULL)
