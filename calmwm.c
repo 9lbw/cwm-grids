@@ -92,7 +92,8 @@ main(int argc, char **argv)
 	if (signal(SIGCHLD, sighdlr) == SIG_ERR ||
 	    signal(SIGHUP, sighdlr) == SIG_ERR ||
 	    signal(SIGINT, sighdlr) == SIG_ERR ||
-	    signal(SIGTERM, sighdlr) == SIG_ERR)
+	    signal(SIGTERM, sighdlr) == SIG_ERR ||
+	    signal(SIGUSR1, sighdlr) == SIG_ERR)
 		err(1, "signal");
 
 	if (parse_config(Conf.conf_file, &Conf) == -1) {
@@ -114,7 +115,12 @@ main(int argc, char **argv)
 	memset(&pfd, 0, sizeof(pfd));
 	pfd[0].fd = xfd;
 	pfd[0].events = POLLIN;
-	while (cwm_status == CWM_RUNNING) {
+	while (cwm_status == CWM_RUNNING || cwm_status == CWM_RELOAD) {
+		if (cwm_status == CWM_RELOAD) {
+			if (conf_reload() == 0)
+				conf_apply();
+			cwm_status = CWM_RUNNING;
+		}
 		xev_process();
 		if (poll(pfd, 1, -1) == -1) {
 			if (errno != EINTR)
@@ -218,6 +224,9 @@ sighdlr(int sig)
 		break;
 	case SIGHUP:
 		cwm_status = CWM_EXEC_WM;
+		break;
+	case SIGUSR1:
+		cwm_status = CWM_RELOAD;
 		break;
 	case SIGINT:
 	case SIGTERM:

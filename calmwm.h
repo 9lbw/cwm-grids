@@ -93,7 +93,8 @@ size_t strlcpy(char *, const char *, size_t);
 enum cwm_status {
 	CWM_QUIT,
 	CWM_RUNNING,
-	CWM_EXEC_WM
+	CWM_EXEC_WM,
+	CWM_RELOAD
 };
 enum cursor_font {
 	CF_NORMAL,
@@ -608,6 +609,8 @@ void			 conf_init(struct conf *);
 void			 conf_ignore(struct conf *, const char *);
 void			 conf_screen(struct screen_ctx *);
 void			 conf_group(struct screen_ctx *);
+int			 conf_reload(void);
+void			 conf_apply(void);
 
 void			 xev_process(void);
 

@@ -157,6 +157,8 @@ will be executed via the configured terminal emulator.
 Spawn
 .Dq exec WindowManager
 menu, allowing a switch to another window manager.
+.It Ic MS-c
+Reload configuration file.
 .It Ic CMS-r
 Restart.
 .It Ic CMS-q
@@ -204,6 +206,16 @@ rereads its configuration file when it receives a hangup signal,
 by executing itself with the name and arguments with which it was started.
 This is equivalent to the
 .Ar restart
+function.
+.Pp
+.Nm
+can also reload its configuration file without restarting when it receives
+.Dv SIGUSR1 .
+This preserves all window positions and states, applying only the changed
+settings (colors, borders, fonts, keybindings, mouse bindings).
+If parsing fails, the old configuration remains in effect.
+This is equivalent to the
+.Ar reload
 function.
 .Sh SEARCH
 .Nm

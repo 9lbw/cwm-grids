@@ -239,6 +239,10 @@ When selected, the window manager is replaced by
 .El
 .Sh BIND FUNCTION LIST
 .Bl -tag -width 23n -compact
+.It reload
+Reload the configuration file without restarting.
+Window positions and states are preserved.
+If parsing fails, the old configuration remains in effect.
 .It restart
 Restart the running
 .Xr cwm 1 .

@@ -947,6 +947,33 @@ client_snapcalc(int n0, int n1, int e0, int e1, int snapdist)
 		return 0;
 }
 
+static void
+client_apply_grid(struct geom *geom, int bwidth, struct geom area)
+{
+	int	 left, top, right, bottom;
+
+	if (!Conf.gridsnap || Conf.gridsize <= 0)
+		return;
+
+	left = grid_snap(geom->x);
+	top = grid_snap(geom->y);
+	right = grid_snap(geom->x + geom->w + (bwidth * 2));
+	bottom = grid_snap(geom->y + geom->h + (bwidth * 2));
+
+	left = MAX(area.x, left);
+	top = MAX(area.y, top);
+	right = MIN(area.x + area.w, right);
+	bottom = MIN(area.y + area.h, bottom);
+
+	if (right - left > (bwidth * 2))
+		geom->w = right - left - (bwidth * 2);
+	if (bottom - top > (bwidth * 2))
+		geom->h = bottom - top - (bwidth * 2);
+
+	geom->x = left;
+	geom->y = top;
+}
+
 void
 client_htile(struct client_ctx *cc)
 {
@@ -985,6 +1012,7 @@ client_htile(struct client_ctx *cc)
 	cc->geom.w = area.w - (cc->bwidth * 2);
 	if (Conf.htile > 0)
 		cc->geom.h = ((area.h - (cc->bwidth * 2)) * Conf.htile) / 100;
+	client_apply_grid(&cc->geom, cc->bwidth, area);
 	client_resize(cc, 1);
 	client_ptr_warp(cc);
 
@@ -1010,6 +1038,7 @@ client_htile(struct client_ctx *cc)
 		if (i + 1 == n)
 			ci->geom.w = area.x + area.w -
 			    ci->geom.x - (ci->bwidth * 2);
+		client_apply_grid(&ci->geom, ci->bwidth, area);
 		x += w;
 		i++;
 		client_resize(ci, 1);
@@ -1054,6 +1083,7 @@ client_vtile(struct client_ctx *cc)
 	if (Conf.vtile > 0)
 		cc->geom.w = ((area.w - (cc->bwidth * 2)) * Conf.vtile) / 100;
 	cc->geom.h = area.h - (cc->bwidth * 2);
+	client_apply_grid(&cc->geom, cc->bwidth, area);
 	client_resize(cc, 1);
 	client_ptr_warp(cc);
 
@@ -1079,6 +1109,7 @@ client_vtile(struct client_ctx *cc)
 		if (i + 1 == n)
 			ci->geom.h = area.y + area.h -
 			    ci->geom.y - (ci->bwidth * 2);
+		client_apply_grid(&ci->geom, ci->bwidth, area);
 		y += h;
 		i++;
 		client_resize(ci, 1);

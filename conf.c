@@ -194,6 +194,7 @@ static const struct {
 	{ FUNC_SC(lock, exec_lock, 0) },
 	{ FUNC_SC(restart, cwm_status, CWM_EXEC_WM) },
 	{ FUNC_SC(quit, cwm_status, CWM_QUIT) },
+	{ FUNC_SC(reload, cwm_status, CWM_RELOAD) },
 
 	{ FUNC_SC(grid-step-up, grid_step_up, 0) },
 	{ FUNC_SC(grid-step-down, grid_step_down, 0) },
@@ -253,6 +254,7 @@ static const struct {
 	{ "CMS-f",	"window-freeze" },
 	{ "CMS-r",	"restart" },
 	{ "CMS-q",	"quit" },
+	{ "MS-c",	"reload" },
 	{ "M-h",	"window-move-left" },
 	{ "M-j",	"window-move-down" },
 	{ "M-k",	"window-move-up" },
@@ -711,4 +713,199 @@ conf_grab_mouse(Window win)
 			    None, None);
 		}
 	}
+}
+
+int
+conf_reload(void)
+{
+	struct conf		 newconf;
+	struct bind_ctx		*kb, *mb;
+	struct autogroup	*ag;
+	struct winname		*wn;
+	struct cmd_ctx		*cmd;
+	unsigned int		 i;
+
+	/* Initialize new config with defaults */
+	conf_init(&newconf);
+
+	/* Use existing conf_file path */
+	free(newconf.conf_file);
+	newconf.conf_file = xstrdup(Conf.conf_file);
+
+	/* Parse new config - if it fails, abort */
+	if (parse_config(newconf.conf_file, &newconf) == -1) {
+		warnx("config reload failed: parse error");
+		/* Try to notify user via notify-send */
+		u_spawn("notify-send -u critical 'cwm' 'Config reload failed: parse error'");
+		conf_clear(&newconf);
+		return -1;
+	}
+
+	/* Clear existing dynamic lists */
+	while ((kb = TAILQ_FIRST(&Conf.keybindq)) != NULL) {
+		TAILQ_REMOVE(&Conf.keybindq, kb, entry);
+		free(kb->cargs->cmd);
+		free(kb->cargs);
+		free(kb);
+	}
+	while ((mb = TAILQ_FIRST(&Conf.mousebindq)) != NULL) {
+		TAILQ_REMOVE(&Conf.mousebindq, mb, entry);
+		free(mb->cargs->cmd);
+		free(mb->cargs);
+		free(mb);
+	}
+	while ((ag = TAILQ_FIRST(&Conf.autogroupq)) != NULL) {
+		TAILQ_REMOVE(&Conf.autogroupq, ag, entry);
+		free(ag->class);
+		free(ag->name);
+		free(ag);
+	}
+	while ((wn = TAILQ_FIRST(&Conf.ignoreq)) != NULL) {
+		TAILQ_REMOVE(&Conf.ignoreq, wn, entry);
+		free(wn->name);
+		free(wn);
+	}
+	while ((cmd = TAILQ_FIRST(&Conf.cmdq)) != NULL) {
+		TAILQ_REMOVE(&Conf.cmdq, cmd, entry);
+		free(cmd->name);
+		free(cmd->path);
+		free(cmd);
+	}
+	while ((cmd = TAILQ_FIRST(&Conf.wmq)) != NULL) {
+		TAILQ_REMOVE(&Conf.wmq, cmd, entry);
+		free(cmd->name);
+		free(cmd->path);
+		free(cmd);
+	}
+
+	/* Move queues from newconf to Conf */
+	TAILQ_INIT(&Conf.keybindq);
+	while ((kb = TAILQ_FIRST(&newconf.keybindq)) != NULL) {
+		TAILQ_REMOVE(&newconf.keybindq, kb, entry);
+		TAILQ_INSERT_TAIL(&Conf.keybindq, kb, entry);
+	}
+	TAILQ_INIT(&Conf.mousebindq);
+	while ((mb = TAILQ_FIRST(&newconf.mousebindq)) != NULL) {
+		TAILQ_REMOVE(&newconf.mousebindq, mb, entry);
+		TAILQ_INSERT_TAIL(&Conf.mousebindq, mb, entry);
+	}
+	TAILQ_INIT(&Conf.autogroupq);
+	while ((ag = TAILQ_FIRST(&newconf.autogroupq)) != NULL) {
+		TAILQ_REMOVE(&newconf.autogroupq, ag, entry);
+		TAILQ_INSERT_TAIL(&Conf.autogroupq, ag, entry);
+	}
+	TAILQ_INIT(&Conf.ignoreq);
+	while ((wn = TAILQ_FIRST(&newconf.ignoreq)) != NULL) {
+		TAILQ_REMOVE(&newconf.ignoreq, wn, entry);
+		TAILQ_INSERT_TAIL(&Conf.ignoreq, wn, entry);
+	}
+	TAILQ_INIT(&Conf.cmdq);
+	while ((cmd = TAILQ_FIRST(&newconf.cmdq)) != NULL) {
+		TAILQ_REMOVE(&newconf.cmdq, cmd, entry);
+		TAILQ_INSERT_TAIL(&Conf.cmdq, cmd, entry);
+	}
+	TAILQ_INIT(&Conf.wmq);
+	while ((cmd = TAILQ_FIRST(&newconf.wmq)) != NULL) {
+		TAILQ_REMOVE(&newconf.wmq, cmd, entry);
+		TAILQ_INSERT_TAIL(&Conf.wmq, cmd, entry);
+	}
+
+	/* Copy simple settings */
+	Conf.bwidth = newconf.bwidth;
+	Conf.mamount = newconf.mamount;
+	Conf.snapdist = newconf.snapdist;
+	Conf.htile = newconf.htile;
+	Conf.vtile = newconf.vtile;
+	Conf.gridsize = newconf.gridsize;
+	Conf.gridsnap = newconf.gridsnap;
+	Conf.stickygroups = newconf.stickygroups;
+	Conf.gap = newconf.gap;
+
+	/* Transfer colors */
+	for (i = 0; i < CWM_COLOR_NITEMS; i++) {
+		free(Conf.color[i]);
+		Conf.color[i] = newconf.color[i];
+		newconf.color[i] = NULL;
+	}
+
+	/* Transfer font */
+	free(Conf.font);
+	Conf.font = newconf.font;
+	newconf.font = NULL;
+
+	/* Clean up remaining newconf fields */
+	free(newconf.conf_file);
+	free(newconf.known_hosts);
+	free(newconf.wmname);
+
+	return 0;
+}
+
+void
+conf_apply(void)
+{
+	struct screen_ctx	*sc;
+	struct client_ctx	*cc;
+	unsigned int		 i;
+	XftColor		 xc;
+
+	TAILQ_FOREACH(sc, &Screenq, entry) {
+		/* Update screen-level settings */
+		sc->gap = Conf.gap;
+		sc->snapdist = Conf.snapdist;
+
+		/* Free old colors */
+		for (i = 0; i < CWM_COLOR_NITEMS; i++)
+			XftColorFree(X_Dpy, sc->visual, sc->colormap,
+			    &sc->xftcolor[i]);
+
+		/* Reallocate colors (same logic as conf_screen) */
+		for (i = 0; i < CWM_COLOR_NITEMS; i++) {
+			if (i == CWM_COLOR_MENU_FONT_SEL && *Conf.color[i] == '\0') {
+				xu_xorcolor(sc->xftcolor[CWM_COLOR_MENU_BG],
+				    sc->xftcolor[CWM_COLOR_MENU_FG], &xc);
+				xu_xorcolor(sc->xftcolor[CWM_COLOR_MENU_FONT], xc, &xc);
+				if (!XftColorAllocValue(X_Dpy, sc->visual, sc->colormap,
+				    &xc.color, &sc->xftcolor[CWM_COLOR_MENU_FONT_SEL]))
+					warnx("XftColorAllocValue: %s", Conf.color[i]);
+				break;
+			}
+			if (!XftColorAllocName(X_Dpy, sc->visual, sc->colormap,
+			    Conf.color[i], &sc->xftcolor[i])) {
+				warnx("XftColorAllocName: %s", Conf.color[i]);
+				/* Fall back to default color */
+				XftColorAllocName(X_Dpy, sc->visual, sc->colormap,
+				    color_binds[i], &sc->xftcolor[i]);
+			}
+		}
+
+		/* Reload font */
+		XftFontClose(X_Dpy, sc->xftfont);
+		sc->xftfont = XftFontOpenXlfd(X_Dpy, sc->which, Conf.font);
+		if (sc->xftfont == NULL) {
+			sc->xftfont = XftFontOpenName(X_Dpy, sc->which, Conf.font);
+			if (sc->xftfont == NULL)
+				errx(1, "%s: XftFontOpenName: %s", __func__, Conf.font);
+		}
+
+		/* Regrab keyboard on root window */
+		conf_grab_kbd(sc->rootwin);
+
+		/* Update all clients */
+		TAILQ_FOREACH(cc, &sc->clientq, entry) {
+			/* Regrab mouse bindings */
+			conf_grab_mouse(cc->win);
+
+			/* Update border width (skip fullscreen/maximized) */
+			if (!(cc->flags & (CLIENT_FULLSCREEN | CLIENT_MAXIMIZED)))
+				cc->bwidth = Conf.bwidth;
+
+			/* Redraw border with new colors */
+			client_draw_border(cc);
+			client_config(cc);
+		}
+	}
+
+	/* Notify user of success */
+	u_spawn("notify-send 'cwm' 'Config reloaded'");
 }
